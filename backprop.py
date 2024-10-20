@@ -38,11 +38,13 @@ def compute_gradients(y_true, y_hat, weights, acts):
 
 def main():
     input_dim = 3
+    output_dim = 1
+    assert output_dim == 1, f'output_dim: {output_dim}'
     batch_size = 50
-    X_batch = np.random.random((50, input_dim, 1))
-    Y_gt = np.random.random(50)
+    X_batch = np.random.random((batch_size, input_dim, 1))
+    Y_gt = np.random.random((batch_size, output_dim))
     print(f'X shape: {X_batch.shape}. Y shape: {Y_gt.shape}')
-    hidden_sizes = [input_dim, 5, 7, 1]
+    hidden_sizes = [input_dim, 4, 12, 8, output_dim]
     weights = initialize_weights(hidden_sizes)
     for i, weight in weights.items():
         print(f'layer: {i}, weight shape: {weight.shape}')
@@ -62,7 +64,7 @@ def main():
             for l, dweight in dweights.items():
                 dweights_cum[l] = dweights_cum.get(l, 0) + dweight
         loss_cum /= len(X_batch)
-        print(f'step: {step}, loss: {loss_cum:0.4f}')
+        print(f'step: {step}, loss: {loss_cum:0.6f}')
         for l, dweight in dweights_cum.items():
             weights[l] -= 0.1 * dweight
 

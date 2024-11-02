@@ -38,37 +38,39 @@ class KMeans:
         if self.random_state is not None:
             np.random.seed(self.random_state)
             
-        n_samples, n_features = X.shape
+        n_samples = X.shape[0]
         
         # Randomly initialize centroids
         idx = np.random.choice(n_samples, self.n_clusters, replace=False)
         self.centroids_ = X[idx]
-        
-        for _ in range(self.max_iters):
-            # Store old centroids
-            old_centroids = self.centroids_.copy()
-            
+
+        prev_inertia = None
+        for i in range(self.max_iters):
             # Assign points to nearest centroid
-            distances = np.sqrt(((X - self.centroids_[:, None, :])**2).sum(axis=-1))
-            self.labels_ = np.argmin(distances, axis=0)
-            
+            self.labels_ = self.predict(X)
+
             # Update centroids
             for k in range(self.n_clusters):
                 if np.sum(self.labels_ == k) > 0:  # Avoid empty clusters
                     self.centroids_[k] = X[self.labels_ == k].mean(axis=0)
             
             # Check for convergence
-            if np.sum((old_centroids - self.centroids_)**2) < self.tol:
+            self.inertia_ = self.compute_inertia(X)
+            print(f'Iteration {i}, inertia is {self.inertia_: 0.4f}.')
+            if i > 1 and abs(self.inertia_ - prev_inertia) < self.tol:
+                print(f'Early stop at iteration {i} with inertia {self.inertia_: 0.4f}')
                 break
-                
-        # Calculate inertia (within-cluster sum of squares)
-        self.inertia_ = 0
+            prev_inertia = self.inertia_
+
+        return self
+
+    def compute_inertia(self, X):
+        inertia = 0
         for k in range(self.n_clusters):
             if np.sum(self.labels_ == k) > 0:
-                self.inertia_ += np.sum((X[self.labels_ == k] - self.centroids_[k])**2)
-                
-        return self
-    
+                inertia += np.sum((X[self.labels_ == k] - self.centroids_[k])**2)
+        return inertia
+
     def predict(self, X):
         """
         Predict cluster labels for new data.
@@ -85,6 +87,7 @@ class KMeans:
         """
         distances = np.sqrt(((X - self.centroids_[:, None, :])**2).sum(axis=-1))
         return np.argmin(distances, axis=0)
+
 
 def test_kmeans():
     """
@@ -106,6 +109,7 @@ def test_kmeans():
     assert kmeans.centroids_.shape == (3, 2)
     assert len(kmeans.labels_) == 300
     assert kmeans.inertia_ > 0
+    print(kmeans.labels_)
     
     print("All tests passed!")
 

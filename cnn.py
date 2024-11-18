@@ -4,12 +4,18 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
 from tqdm import tqdm
+import os
 
 # Define relevant variables for the ML task
 batch_size = 64
 num_classes = 10
 learning_rate = 0.001
 num_epochs = 20
+
+# Create checkpoint directory if it doesn't exist
+checkpoint_dir = './checkpoints'
+if not os.path.exists(checkpoint_dir):
+    os.makedirs(checkpoint_dir)
 
 # Device will determine whether to run the training on GPU or CPU.
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -95,7 +101,9 @@ optimizer = torch.optim.SGD(
 total_step = len(train_loader)
 
 # We use the pre-defined number of epochs to determine how many iterations to train the network on
+best_loss = float('inf')
 for epoch in tqdm(range(num_epochs), desc='Epochs'):
+    running_loss = 0.0
     # Load in the data in batches using the train_loader object
     for i, (images, labels) in enumerate(tqdm(train_loader, desc=f'Epoch {epoch+1}/{num_epochs}', leave=False)):
         # Move tensors to the configured device
@@ -105,11 +113,33 @@ for epoch in tqdm(range(num_epochs), desc='Epochs'):
         # Forward pass
         outputs = model(images)
         loss = criterion(outputs, labels)
+        running_loss += loss.item()
 
         # Backward and optimize
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+    # Calculate average loss for the epoch
+    avg_loss = running_loss / len(train_loader)
+
     # Print epoch results on a new line after the progress bars
-    tqdm.write(f'\nEpoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+    tqdm.write(f'\nEpoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}')
+
+    # Save checkpoint
+    checkpoint = {
+        'epoch': epoch + 1,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': avg_loss,
+    }
+
+    # Save latest checkpoint
+    torch.save(checkpoint, os.path.join(
+        checkpoint_dir, 'latest_checkpoint.pth'))
+
+    # Save best model
+    if avg_loss < best_loss:
+        best_loss = avg_loss
+        torch.save(checkpoint, os.path.join(checkpoint_dir, 'best_model.pth'))
+        tqdm.write(f'Saved best model with loss: {best_loss:.4f}')
